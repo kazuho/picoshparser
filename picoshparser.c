@@ -136,7 +136,7 @@ Fail:
     return 1;
 }
 
-int psr_parse_int_member(psr_parse_context_t *ctx, int64_t *value)
+int psr_parse_int_part(psr_parse_context_t *ctx, int64_t *value)
 {
     int ch, is_negative = 0;
 
@@ -164,7 +164,7 @@ int psr_parse_int_member(psr_parse_context_t *ctx, int64_t *value)
     return 1;
 }
 
-int psr_parse_bool_member(psr_parse_context_t *ctx, int *value)
+int psr_parse_bool_part(psr_parse_context_t *ctx, int *value)
 {
     if (PSR_UNLIKELY(get_ch(ctx) != '?'))
         return 0;

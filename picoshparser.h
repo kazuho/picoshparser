@@ -35,9 +35,9 @@ typedef struct psr_parse_context {
 
 static void psr_init_parse_context(psr_parse_context_t *ctx, const char *s, size_t len);
 int psr_parse_dictionary(psr_parse_context_t *ctx, const char **key, size_t *key_len);
-int psr_parse_int_member(psr_parse_context_t *ctx, int64_t *value);
-int psr_parse_bool_member(psr_parse_context_t *ctx, int *value);
-int psr_parse_parameter(psr_parse_context_t *ctx);
+int psr_parse_int_part(psr_parse_context_t *ctx, int64_t *value);
+int psr_parse_bool_part(psr_parse_context_t *ctx, int *value);
+int psr_parse_parameter(psr_parse_context_t *ctx, const char **key, size_t *key_len);
 
 /* inline definitions */
 

@@ -16,12 +16,12 @@ int main(int argc, char **argv)
             goto Fail;
         if (key_len == 1) {
             if (key[0] == 'u') {
-                if (!psr_parse_int_member(&ctx, &urgency))
+                if (!psr_parse_int_part(&ctx, &urgency))
                     goto Fail;
                 if (!(0 <= urgency && urgency <= 7))
                     goto Fail;
             } else if (key[0] == 'i') {
-                if (!psr_parse_bool_member(&ctx, &incremental))
+                if (!psr_parse_bool_part(&ctx, &incremental))
                     goto Fail;
             }
         }
