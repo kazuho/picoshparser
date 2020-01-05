@@ -57,36 +57,53 @@ static inline void unget_ch(psr_parse_context_t *ctx)
     --ctx->_input;
 }
 
-static inline int skip_midspace(psr_parse_context_t *ctx)
+static int advance_to_next_toplevel(psr_parse_context_t *ctx, int offending_ch)
 {
-    int ch;
+    int ch = offending_ch;
+
+    /* skip SP* */
+    while (ch == ' ')
+        get_ch(ctx);
+    /* should be ',' or EOS (TODO handle ";", ")") */
+    switch (ch) {
+    case ',':
+        ctx->state = PSR_STATE_TOPLEVEL;
+        break;
+    case -1:
+        ctx->state = PSR_STATE_COMPLETE;
+        return 1;
+    default:
+        return 0;
+    }
+    /* skip SP* */
     while ((ch = get_ch(ctx)) == ' ')
         ;
     if (ch == -1)
         return 0;
     unget_ch(ctx);
-    return 1;
-}
 
-static int skip_rest_of_member(psr_parse_context_t *ctx)
-{
-    /* FIXME */
-    while (1) {
-        switch (get_ch(ctx)) {
-        case ',':
-            unget_ch(ctx);
-            return 1;
-        case -1:
-            return 1;
-        default:
-            break;
-        }
-    }
+    return 1;
 }
 
 static int parse_key(psr_parse_context_t *ctx, const char **key, size_t *key_len)
 {
     int ch;
+
+    switch (ctx->state) {
+    case PSR_STATE_TOPLEVEL:
+        break;
+    case PSR_STATE_DICT_VALUE:
+        /* advance to next (FIXME) */
+        while ((ch = get_ch(ctx)) != ',') {
+            if (ch == -1)
+                return 0;
+        }
+        if (!advance_to_next_toplevel(ctx, ch))
+            return 0;
+        break;
+    default:
+        return 0;
+    }
 
     /* first char is lcalpha */
     *key = ctx->_input;
@@ -104,52 +121,20 @@ static int parse_key(psr_parse_context_t *ctx, const char **key, size_t *key_len
     return 1;
 }
 
-static inline void do_parse_dictionary(psr_parse_context_t *ctx, int first_call)
+const char *psr_complex__next_key(psr_parse_context_t *ctx, size_t *key_len)
 {
-    if (!first_call) {
-        /* skip to the end of member */
-        if (!skip_rest_of_member(ctx))
-            goto Fail;
-        /* finish processing when the input terminates */
-        if (is_end(ctx))
-            goto End;
-        /* *SP "," *SP */
-        if (!skip_midspace(ctx))
-            goto Fail;
-        if (get_ch(ctx) != ',')
-            goto Fail;
-        if (!skip_midspace(ctx))
-            goto Fail;
-    }
+    const char *key;
 
     /* parse key "=" */
-    if (!parse_key(ctx, &ctx->key, &ctx->key_len))
+    if (!parse_key(ctx, &key, key_len))
         goto Fail;
     if (get_ch(ctx) != '=')
         goto Fail;
 
-    return;
+    ctx->state = PSR_STATE_DICT_VALUE;
+    return key;
 Fail:
-    ctx->key = NULL;
-    ctx->key_len = 0;
-    return;
-End:
-    ctx->done = 1;
-    return;
-}
-
-void psr_parse_dictionary_first(psr_parse_context_t *ctx, const char *field_value, size_t field_len)
-{
-    *ctx = (psr_parse_context_t){
-        ._input = field_value,
-        ._end   = field_value + field_len,
-    };
-    do_parse_dictionary(ctx, 1);
-}
-
-void psr_parse_dictionary_next(psr_parse_context_t *ctx)
-{
-    do_parse_dictionary(ctx, 0);
+    return NULL;
 }
 
 int psr_parse_int_part(psr_parse_context_t *ctx, int64_t *value)
@@ -171,13 +156,10 @@ int psr_parse_int_part(psr_parse_context_t *ctx, int64_t *value)
             break;
         *value = *value * 10 + ch - '0';
     }
-    if (ch == -1)
-        return 0;
-    unget_ch(ctx);
-
     if (is_negative)
         *value = -*value;
-    return 1;
+
+    return advance_to_next_toplevel(ctx, ch);
 }
 
 int psr_parse_bool_part(psr_parse_context_t *ctx, int *value)
@@ -194,5 +176,5 @@ int psr_parse_bool_part(psr_parse_context_t *ctx, int *value)
     default:
         return 0;
     }
-    return 1;
+    return advance_to_next_toplevel(ctx, get_ch(ctx));
 }
