@@ -30,13 +30,24 @@
 
 typedef struct psr_parse_context {
     const char *_input, *_end;
-    const char *dict_name;
-    size_t dict_name_len;
+    int _is_next_call;
 } psr_parse_context_t;
 
-int psr_parse_dictionary(psr_parse_context_t *ctx, const char *s, size_t len);
-int psr_parse_item_int(psr_parse_context_t *ctx, int64_t *value);
-int psr_parse_item_boolean(psr_parse_context_t *ctx, int *value);
+static void psr_init_parse_context(psr_parse_context_t *ctx, const char *s, size_t len);
+int psr_parse_dictionary(psr_parse_context_t *ctx, const char **key, size_t *key_len);
+int psr_parse_int_member(psr_parse_context_t *ctx, int64_t *value);
+int psr_parse_bool_member(psr_parse_context_t *ctx, int *value);
+int psr_parse_parameter(psr_parse_context_t *ctx);
+
+/* inline definitions */
+
+inline void psr_init_parse_context(psr_parse_context_t *ctx, const char *s, size_t len)
+{
+    *ctx = (psr_parse_context_t){
+        ._input = s,
+        ._end   = s + len,
+    };
+}
 
 #endif
 

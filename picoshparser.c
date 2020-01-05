@@ -104,22 +104,15 @@ static int parse_key(psr_parse_context_t *ctx, const char **key, size_t *key_len
     return 1;
 }
 
-int psr_parse_dictionary(psr_parse_context_t *ctx, const char *field_value, size_t field_len)
+int psr_parse_dictionary(psr_parse_context_t *ctx, const char **key, size_t *key_len)
 {
-    if (ctx->_input == NULL) {
-        /* first call */
-        ctx->_input = field_value;
-        ctx->_end = field_value + field_len;
-    } else {
-        /* in the middle */
-        assert(field_value <= ctx->_input);
-        assert(field_value + field_len == ctx->_end);
+    if (ctx->_is_next_call) {
         /* skip to the end of member */
         if (!skip_rest_of_member(ctx))
             goto Fail;
         /* finish processing when the input terminates */
         if (is_end(ctx))
-            goto End;
+            return 0;
         /* *SP "," *SP */
         if (!skip_midspace(ctx))
             goto Fail;
@@ -130,21 +123,20 @@ int psr_parse_dictionary(psr_parse_context_t *ctx, const char *field_value, size
     }
 
     /* parse key "=" */
-    if (!parse_key(ctx, &ctx->dict_name, &ctx->dict_name_len))
+    if (!parse_key(ctx, key, key_len))
         goto Fail;
     if (get_ch(ctx) != '=')
         goto Fail;
 
+    ctx->_is_next_call = 1;
     return 1;
 Fail:
-    return 0;
-End:
-    ctx->dict_name_len = 0;
-    ctx->_input = ctx->_end;
+    *key = NULL;
+    *key_len = 0;
     return 1;
 }
 
-int psr_parse_item_int(psr_parse_context_t *ctx, int64_t *value)
+int psr_parse_int_member(psr_parse_context_t *ctx, int64_t *value)
 {
     int ch, is_negative = 0;
 
@@ -172,7 +164,7 @@ int psr_parse_item_int(psr_parse_context_t *ctx, int64_t *value)
     return 1;
 }
 
-int psr_parse_item_boolean(psr_parse_context_t *ctx, int *value)
+int psr_parse_bool_member(psr_parse_context_t *ctx, int *value)
 {
     if (PSR_UNLIKELY(get_ch(ctx) != '?'))
         return 0;
