@@ -104,15 +104,15 @@ static int parse_key(psr_parse_context_t *ctx, const char **key, size_t *key_len
     return 1;
 }
 
-int psr_parse_dictionary(psr_parse_context_t *ctx, const char **key, size_t *key_len)
+static inline void do_parse_dictionary(psr_parse_context_t *ctx, int first_call)
 {
-    if (ctx->_is_next_call) {
+    if (!first_call) {
         /* skip to the end of member */
         if (!skip_rest_of_member(ctx))
             goto Fail;
         /* finish processing when the input terminates */
         if (is_end(ctx))
-            return 0;
+            goto End;
         /* *SP "," *SP */
         if (!skip_midspace(ctx))
             goto Fail;
@@ -123,17 +123,33 @@ int psr_parse_dictionary(psr_parse_context_t *ctx, const char **key, size_t *key
     }
 
     /* parse key "=" */
-    if (!parse_key(ctx, key, key_len))
+    if (!parse_key(ctx, &ctx->key, &ctx->key_len))
         goto Fail;
     if (get_ch(ctx) != '=')
         goto Fail;
 
-    ctx->_is_next_call = 1;
-    return 1;
+    return;
 Fail:
-    *key = NULL;
-    *key_len = 0;
-    return 1;
+    ctx->key = NULL;
+    ctx->key_len = 0;
+    return;
+End:
+    ctx->done = 1;
+    return;
+}
+
+void psr_parse_dictionary_first(psr_parse_context_t *ctx, const char *field_value, size_t field_len)
+{
+    *ctx = (psr_parse_context_t){
+        ._input = field_value,
+        ._end   = field_value + field_len,
+    };
+    do_parse_dictionary(ctx, 1);
+}
+
+void psr_parse_dictionary_next(psr_parse_context_t *ctx)
+{
+    do_parse_dictionary(ctx, 0);
 }
 
 int psr_parse_int_part(psr_parse_context_t *ctx, int64_t *value)
