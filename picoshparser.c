@@ -38,13 +38,6 @@ static inline int is_end(psr_parse_context_t *ctx)
     return ctx->_input == ctx->_end;
 }
 
-static inline int peek_ch(psr_parse_context_t *ctx)
-{
-    if (is_end(ctx))
-        return -1;
-    return *ctx->_input;
-}
-
 static inline int get_ch(psr_parse_context_t *ctx)
 {
     if (is_end(ctx))
@@ -129,12 +122,10 @@ int psr_parse_int_part(psr_parse_context_t *ctx, int64_t *value)
 {
     int ch, is_negative = 0;
 
-    if (PSR_UNLIKELY(peek_ch(ctx) == '-')) {
-        get_ch(ctx);
+    if ((ch = get_ch(ctx)) == '-') {
         is_negative = 1;
+        ch = get_ch(ctx);
     }
-
-    ch = get_ch(ctx);
     if (PSR_UNLIKELY(!('0' <= ch && ch <= '9')))
         return 0;
     *value = ch - '0';
