@@ -31,15 +31,13 @@
 typedef struct psr_parse_context {
     const char *_input, *_end;
     enum {
-        PSR_STATE_COMPLETE,
         PSR_STATE_TOPLEVEL, /* either a dictionary member or a list member */
         PSR_STATE_DICT_VALUE,
     } state;
 } psr_parse_context_t;
 
 static void psr_complex__init(psr_parse_context_t *ctx, const char *field_value, size_t field_len);
-static int psr_complex__complete(psr_parse_context_t *ctx);
-const char *psr_complex__next_key(psr_parse_context_t *ctx, size_t *key_len);
+int psr_complex__next_key(psr_parse_context_t *ctx, const char **key, size_t *key_len);
 int psr_parse_int_part(psr_parse_context_t *ctx, int64_t *value);
 int psr_parse_bool_part(psr_parse_context_t *ctx, int *value);
 
@@ -52,11 +50,6 @@ inline void psr_complex__init(psr_parse_context_t *ctx, const char *field_value,
         ._end      = field_value + field_len,
         .state     = PSR_STATE_TOPLEVEL,
     };
-}
-
-inline int psr_complex__complete(psr_parse_context_t *ctx)
-{
-    return ctx->state == PSR_STATE_COMPLETE;
 }
 
 #endif

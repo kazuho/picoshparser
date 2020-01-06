@@ -61,20 +61,13 @@ static int advance_to_next_toplevel(psr_parse_context_t *ctx, int offending_ch)
 {
     int ch = offending_ch;
 
-    /* skip *SP */
-    while (ch == ' ')
+    /* skip attributes and also the value, when the app does not read it (TODO correctness) */
+    while (ch != ',') {
+        if (ch == -1)
+            goto Done;
         ch = get_ch(ctx);
-    /* should be ',' or EOS (TODO handle ";", ")") */
-    switch (ch) {
-    case ',':
-        ctx->state = PSR_STATE_TOPLEVEL;
-        break;
-    case -1:
-        ctx->state = PSR_STATE_COMPLETE;
-        return 1;
-    default:
-        return 0;
     }
+
     /* skip *SP */
     while ((ch = get_ch(ctx)) == ' ')
         ;
@@ -82,28 +75,14 @@ static int advance_to_next_toplevel(psr_parse_context_t *ctx, int offending_ch)
         return 0;
     unget_ch(ctx);
 
+Done:
+    ctx->state = PSR_STATE_TOPLEVEL;
     return 1;
 }
 
 static int parse_key(psr_parse_context_t *ctx, const char **key, size_t *key_len)
 {
     int ch;
-
-    switch (ctx->state) {
-    case PSR_STATE_TOPLEVEL:
-        break;
-    case PSR_STATE_DICT_VALUE:
-        /* advance to next (FIXME) */
-        while ((ch = get_ch(ctx)) != ',') {
-            if (ch == -1)
-                return 0;
-        }
-        if (!advance_to_next_toplevel(ctx, ch))
-            return 0;
-        break;
-    default:
-        return 0;
-    }
 
     /* first char is lcalpha */
     *key = ctx->_input;
@@ -121,20 +100,29 @@ static int parse_key(psr_parse_context_t *ctx, const char **key, size_t *key_len
     return 1;
 }
 
-const char *psr_complex__next_key(psr_parse_context_t *ctx, size_t *key_len)
+int psr_complex__next_key(psr_parse_context_t *ctx, const char **key, size_t *key_len)
 {
-    const char *key;
+    if (ctx->state != PSR_STATE_TOPLEVEL) {
+        assert(ctx->state == PSR_STATE_DICT_VALUE);
+        if (!advance_to_next_toplevel(ctx, get_ch(ctx)))
+            goto Fail;
+    }
+
+    if (is_end(ctx))
+        return 0;
 
     /* parse key "=" */
-    if (!parse_key(ctx, &key, key_len))
+    if (!parse_key(ctx, key, key_len))
         goto Fail;
     if (get_ch(ctx) != '=')
         goto Fail;
 
     ctx->state = PSR_STATE_DICT_VALUE;
-    return key;
+    return 1;
 Fail:
-    return NULL;
+    *key = NULL;
+    *key_len = 0;
+    return 1;
 }
 
 int psr_parse_int_part(psr_parse_context_t *ctx, int64_t *value)
