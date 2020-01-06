@@ -61,9 +61,9 @@ static int advance_to_next_toplevel(psr_parse_context_t *ctx, int offending_ch)
 {
     int ch = offending_ch;
 
-    /* skip SP* */
+    /* skip *SP */
     while (ch == ' ')
-        get_ch(ctx);
+        ch = get_ch(ctx);
     /* should be ',' or EOS (TODO handle ";", ")") */
     switch (ch) {
     case ',':
@@ -75,7 +75,7 @@ static int advance_to_next_toplevel(psr_parse_context_t *ctx, int offending_ch)
     default:
         return 0;
     }
-    /* skip SP* */
+    /* skip *SP */
     while ((ch = get_ch(ctx)) == ' ')
         ;
     if (ch == -1)
